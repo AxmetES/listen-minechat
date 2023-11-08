@@ -6,7 +6,7 @@ For listening special server.
 
 Clone project:
 ```bash
-git clone 
+git clone https://github.com/AxmetES/listen-minechat.git
 ```
 Activate a virtual environment.
 
@@ -29,4 +29,4 @@ Start script:
 python3 listen-minechat.py --host minechat.dvmn.org --port 5000 --path chat_log.txt
 ```
 
-All chat history recoding in file.
+All chat history recoding in file ```chat_log.txt```
