@@ -7,9 +7,10 @@ import configargparse
 
 
 logging.basicConfig(
-    filename="write.log",
+    filename="listen.log",
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
+    encoding="utf-8",
 )
 
 
@@ -42,15 +43,17 @@ async def append_to_file(data):
 
 
 async def tcp_echo_client():
+    logging.info(f"Start listening, host: {args.host}, port: {args.port}")
+
     try:
         reader, writer = await asyncio.open_connection(args.host, args.port)
     except OSError as e:
         logging.error(f"Error connecting to the server: {e}")
         return
-    data = await reader.read(1000)
+    data = await reader.read(500)
     while data:
-        data = await reader.read(1000)
-        logging.info(f"Received: {data}")
+        data = await reader.read(500)
+        print(data.decode())
         await append_to_file(data.decode().strip())
 
     logging.info(f"Received: {data.decode()!r}")

@@ -9,6 +9,7 @@ logging.basicConfig(
     filename="write.log",
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
+    encoding="utf-8",
 )
 
 
@@ -28,7 +29,8 @@ async def send_messages(reader, writer):
     client = redis.Redis()
     while True:
         try:
-            response = await reader.readline(500)
+            response = await reader.readline()
+            print(f'from server: {response.decode()}')
         except asyncio.IncompleteReadError as incomplete_read_error:
             logging.error(f"Incomplete read error: {incomplete_read_error}")
             break
@@ -51,6 +53,7 @@ async def send_messages(reader, writer):
                 logging.info(f"to server: {response.decode()}")
                 writer.write(value + b"\n")
                 await writer.drain()
+                break
             else:
                 logging.info(f"to server: {response.decode()}")
                 writer.write(" ".encode("utf-8") + b"\n")
@@ -76,6 +79,7 @@ async def send_messages(reader, writer):
             break
         else:
             message = input("Enter your message: ")
+            print(message)
             logging.info(f"message to server: {message}")
             writer.write(message.encode("utf-8") + b"\n" + b"\n")
             await writer.drain()
