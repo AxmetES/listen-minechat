@@ -30,19 +30,9 @@ async def send_messages(reader, writer):
     while True:
         try:
             response = await reader.readline()
-            print(f'from server: {response.decode()}')
-        except asyncio.IncompleteReadError as incomplete_read_error:
-            logging.error(f"Incomplete read error: {incomplete_read_error}")
-            break
-        except asyncio.CancelledError:
-            logging.info("Task cancelled.")
-            break
-        except ConnectionError as connection_error:
-            logging.error(f"Connection error: {connection_error}")
-            break
-        except OSError as os_error:
-            logging.error(f"OS error: {os_error}")
-            break
+            print(f"from server: {response.decode()}")
+        except Exception as error:
+            logging.exception(error)
         logging.info(f"from server: {response.decode()}")
         if (
             response.decode()
@@ -53,26 +43,40 @@ async def send_messages(reader, writer):
                 logging.info(f"to server: {response.decode()}")
                 writer.write(value + b"\n")
                 await writer.drain()
-                break
             else:
                 logging.info(f"to server: {response.decode()}")
                 writer.write(" ".encode("utf-8") + b"\n")
                 await writer.drain()
-        if response.decode() == "Enter preferred nickname below:\n":
+        elif response.decode() == "Enter preferred nickname below:\n":
             message = input("Enter preferred nickname: ")
             logging.info(f"ser info: {response.decode()}")
             writer.write(message.encode("utf-8") + b"\n" + b"\n")
             await writer.drain()
-        if "account_hash" in response.decode():
-            nickname, account_hash = await get_hash(response.decode())
-            logging.info(f"nickname: {response.decode()}")
-            if not value:
+        else:
+            try:
+                assert json.loads(response.decode()) is None
+                print("Неизвестный токен. Проверьте его или зарегистрируйте заново.")
+                logging.exception(
+                    "Неизвестный токен. Проверьте его или зарегистрируйте заново."
+                )
+                value = None
+            except AssertionError as error:
                 logging.info("account_hash saved.")
-                try:
+                if not value:
+                    nickname, account_hash = await get_hash(response.decode())
+                    logging.info(f"nickname: {response.decode()}")
                     await client.set("account_hash", account_hash)
-                except redis.RedisError as redis_error:
-                    logging.error(f"Redis error: {redis_error}")
-                    break
+                    response = await reader.readline()
+                    print(f"from server: {response.decode()}")
+                break
+            except redis.RedisError as redis_error:
+                logging.error(f"Redis error: {redis_error}")
+            except Exception as error:
+                logging.exception(error)
+
+    response = await reader.readline()
+    print(f"from server: {response.decode()}")
+
     while True:
         if not response:
             logging.info("Server did not respond within the timeout. Exiting.")
