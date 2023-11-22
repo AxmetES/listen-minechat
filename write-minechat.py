@@ -4,6 +4,8 @@ import json
 
 import redis.asyncio as redis
 
+from utils import write_to_json
+
 
 logging.basicConfig(
     filename="write.log",
@@ -27,6 +29,7 @@ async def get_hash(response: str):
 async def send_messages(reader, writer):
     value = None
     client = redis.Redis()
+    nickname = input("Enter preferred nickname: ")
     while True:
         try:
             response = await reader.readline()
@@ -38,7 +41,7 @@ async def send_messages(reader, writer):
             response.decode()
             == "Hello %username%! Enter your personal hash or leave it empty to create new account.\n"
         ):
-            value = await client.get("account_hash")
+            value = await client.get(nickname)
             if value:
                 logging.info(f"to server: {response.decode()}")
                 writer.write(value + b"\n")
@@ -48,9 +51,8 @@ async def send_messages(reader, writer):
                 writer.write(" ".encode("utf-8") + b"\n")
                 await writer.drain()
         elif response.decode() == "Enter preferred nickname below:\n":
-            message = input("Enter preferred nickname: ")
             logging.info(f"ser info: {response.decode()}")
-            writer.write(message.encode("utf-8") + b"\n" + b"\n")
+            writer.write(nickname.encode("utf-8") + b"\n" + b"\n")
             await writer.drain()
         else:
             try:
@@ -64,8 +66,10 @@ async def send_messages(reader, writer):
                 logging.info("account_hash saved.")
                 if not value:
                     nickname, account_hash = await get_hash(response.decode())
+                    print(f"Ur nickname: {nickname}")
+                    await write_to_json('nicknames.json', nickname)
                     logging.info(f"nickname: {response.decode()}")
-                    await client.set("account_hash", account_hash)
+                    await client.set(nickname, account_hash)
                     response = await reader.readline()
                     print(f"from server: {response.decode()}")
                 break

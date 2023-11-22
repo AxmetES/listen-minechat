@@ -1,9 +1,8 @@
-import datetime
 import asyncio
 import logging
-
-import aiofiles
 import configargparse
+
+from utils import append_to_file
 
 
 logging.basicConfig(
@@ -30,21 +29,9 @@ parser.add_argument("--path", "-pt", dest="path", help="Path to input file")
 args = parser.parse_args()
 
 
-async def append_to_file(data):
-    filename = args.path
-    try:
-        async with aiofiles.open(filename, mode="a") as file:
-            now = datetime.datetime.now()
-            date = now.strftime("%d.%m.%y %H:%M")
-            if data != "\n" and data != "":
-                await file.write(f"[{date}] {data}\n")
-    except OSError as e:
-        logging.error(f"Error writing to file: {e}")
-
-
 async def tcp_echo_client():
+    filename = args.path
     logging.info(f"Start listening, host: {args.host}, port: {args.port}")
-
     try:
         reader, writer = await asyncio.open_connection(args.host, args.port)
     except OSError as e:
@@ -54,7 +41,7 @@ async def tcp_echo_client():
     while data:
         data = await reader.read(500)
         print(data.decode())
-        await append_to_file(data.decode().strip())
+        await append_to_file(filename, data.decode().strip())
 
     logging.info(f"Received: {data.decode()!r}")
     print(f"Received: {data.decode()!r}")
