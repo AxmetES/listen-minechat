@@ -40,7 +40,6 @@ async def authorise(nickname, client, response, writer):
 
 
 async def register(nickname, client, response, writer, reader, value):
-    # TODO check register func.
     if response.decode() == "Enter preferred nickname below:\n":
         logging.info(f"ser info: {response.decode()}")
         writer.write(nickname.encode("utf-8") + b"\n" + b"\n")
