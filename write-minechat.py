@@ -26,6 +26,63 @@ async def get_hash(response: str):
     return nickname, account_hash
 
 
+async def authorise(nickname, client, response, writer):
+    value = await client.get(nickname)
+    if value:
+        logging.info(f"to server: {response.decode()}")
+        writer.write(value + b"\n")
+        await writer.drain()
+    else:
+        logging.info(f"to server: {response.decode()}")
+        writer.write(" ".encode("utf-8") + b"\n")
+        await writer.drain()
+    return value
+
+
+async def register(nickname, client, response, writer, reader, value):
+    # TODO check register func.
+    if response.decode() == "Enter preferred nickname below:\n":
+        logging.info(f"ser info: {response.decode()}")
+        writer.write(nickname.encode("utf-8") + b"\n" + b"\n")
+        await writer.drain()
+    else:
+        try:
+            assert json.loads(response.decode()) is None
+            print("Неизвестный токен. Проверьте его или зарегистрируйте заново.")
+            logging.exception(
+                "Неизвестный токен. Проверьте его или зарегистрируйте заново."
+            )
+            return None
+        except AssertionError as error:
+            logging.info("account_hash saved.")
+            if not value:
+                nickname, account_hash = await get_hash(response.decode())
+                value = account_hash
+                print(f"Ur nickname: {nickname}")
+                await write_to_json("nicknames.json", nickname)
+                logging.info(f"nickname: {response.decode()}")
+                await client.set(nickname, account_hash)
+                response = await reader.readline()
+                print(f"from server: {response.decode()}")
+            return value
+        except redis.RedisError as redis_error:
+            logging.error(f"Redis error: {redis_error}")
+        except Exception as error:
+            logging.exception(error)
+
+
+async def submit_message(response, writer):
+    while True:
+        if not response:
+            logging.info("Server did not respond within the timeout. Exiting.")
+            break
+        else:
+            message = input("Enter your message: ")
+            logging.info(f"message to server: {message}")
+            writer.write(message.encode("utf-8") + b"\n" + b"\n")
+            await writer.drain()
+
+
 async def send_messages(reader, writer):
     value = None
     client = redis.Redis()
@@ -41,56 +98,16 @@ async def send_messages(reader, writer):
             response.decode()
             == "Hello %username%! Enter your personal hash or leave it empty to create new account.\n"
         ):
-            value = await client.get(nickname)
-            if value:
-                logging.info(f"to server: {response.decode()}")
-                writer.write(value + b"\n")
-                await writer.drain()
-            else:
-                logging.info(f"to server: {response.decode()}")
-                writer.write(" ".encode("utf-8") + b"\n")
-                await writer.drain()
-        elif response.decode() == "Enter preferred nickname below:\n":
-            logging.info(f"ser info: {response.decode()}")
-            writer.write(nickname.encode("utf-8") + b"\n" + b"\n")
-            await writer.drain()
+            value = await authorise(nickname, client, response, writer)
         else:
-            try:
-                assert json.loads(response.decode()) is None
-                print("Неизвестный токен. Проверьте его или зарегистрируйте заново.")
-                logging.exception(
-                    "Неизвестный токен. Проверьте его или зарегистрируйте заново."
-                )
-                value = None
-            except AssertionError as error:
-                logging.info("account_hash saved.")
-                if not value:
-                    nickname, account_hash = await get_hash(response.decode())
-                    print(f"Ur nickname: {nickname}")
-                    await write_to_json('nicknames.json', nickname)
-                    logging.info(f"nickname: {response.decode()}")
-                    await client.set(nickname, account_hash)
-                    response = await reader.readline()
-                    print(f"from server: {response.decode()}")
+            value = await register(nickname, client, response, writer, reader, value)
+            if value:
                 break
-            except redis.RedisError as redis_error:
-                logging.error(f"Redis error: {redis_error}")
-            except Exception as error:
-                logging.exception(error)
 
     response = await reader.readline()
     print(f"from server: {response.decode()}")
 
-    while True:
-        if not response:
-            logging.info("Server did not respond within the timeout. Exiting.")
-            break
-        else:
-            message = input("Enter your message: ")
-            print(message)
-            logging.info(f"message to server: {message}")
-            writer.write(message.encode("utf-8") + b"\n" + b"\n")
-            await writer.drain()
+    await submit_message(response, writer)
 
 
 async def main():
