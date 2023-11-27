@@ -1,7 +1,11 @@
+aioconsole==0.6.2
 aiofiles==23.2.1
+argparse==1.4.0
+async-timeout==4.0.3
+asyncio==3.4.3
+black==23.11.0
 configargparse==1.7
-pip-chill==1.0.3
-aioconsole~=0.6.2
 environs==9.5.0
-asyncio~=3.4.3
-redis~=5.0.1
+pip-chill==1.0.3
+redis==5.0.1
+typing-extensions==4.8.0

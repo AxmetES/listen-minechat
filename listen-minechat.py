@@ -1,8 +1,11 @@
 import asyncio
 import logging
+import os
+
 import configargparse
 
 from utils import append_to_file
+from config import settings
 
 
 logging.basicConfig(
@@ -14,7 +17,8 @@ logging.basicConfig(
 
 
 parser = configargparse.ArgumentParser(
-    description="host, port, file path",
+    auto_env_var_prefix="",
+    description="host, port, file filename",
     default_config_files=["myconfig.ini"],
     add_help=False,
 )
@@ -22,15 +26,16 @@ parser = configargparse.ArgumentParser(
 parser.add_argument(
     "--help", "-help", action="help", help="Show this help message and exit"
 )
-parser.add_argument("--host", "-h", dest="host", help="server address")
-parser.add_argument("--port", "-p", dest="port", help="servers port")
-parser.add_argument("--path", "-pt", dest="path", help="Path to input file")
+
+file_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), settings.FILENAME)
+parser.add_argument("--host", "-h", dest="host", default=settings.HOST,  type=str, help="server address")
+parser.add_argument("--port", "-p", dest="port", default=settings.PORT, type=str, help="servers port")
+parser.add_argument("--filename", "-pt", dest="filename", default=file_dir, type=str, help="Path to input file")
 
 args = parser.parse_args()
 
 
 async def tcp_echo_client():
-    filename = args.path
     logging.info(f"Start listening, host: {args.host}, port: {args.port}")
     try:
         reader, writer = await asyncio.open_connection(args.host, args.port)
@@ -41,7 +46,7 @@ async def tcp_echo_client():
     while data:
         data = await reader.read(500)
         print(data.decode())
-        await append_to_file(filename, data.decode().strip())
+        await append_to_file(args.filename, data.decode().strip())
 
     logging.info(f"Received: {data.decode()!r}")
     print(f"Received: {data.decode()!r}")
