@@ -12,6 +12,7 @@ class Settings:
     HOST = env("HOST")
     PORT = env("PORT")
     FILENAME = env.str("FILENAME")
+    NICKNAME = env.str("NICKNAME")
 
 
 settings = Settings()

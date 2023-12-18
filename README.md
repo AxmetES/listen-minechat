@@ -33,6 +33,8 @@ python3 listen-minechat.py --host minechat.dvmn.org --port 5000 --path chat_log.
 ```
 For write to chat:
 ```bash
-python3 write-minechat.py
+python3 write-minechat.py --host minechat.dvmn.org --port 5050 --nickname "Hopeful Hardcore Pop"
+
+(NOTICE): Use nickname stronly from nicknames.json file.
 ```
 All chat history recoding in file ```chat_log.txt```

@@ -27,9 +27,9 @@ async def read_json_file(filename):
         return {}
 
 
-async def write_to_json(filename, new_nickname):
+async def write_to_json(filename, new_nickname, account_hash):
     existing_data = await read_json_file(filename)
-    existing_data.setdefault('nickname', []).append(new_nickname)
+    existing_data.setdefault('nickname-account_hash', []).append(f'{new_nickname} - {account_hash}')
     try:
         async with aiofiles.open(filename, "w") as file:
             await file.write(json.dumps(existing_data, indent=2))

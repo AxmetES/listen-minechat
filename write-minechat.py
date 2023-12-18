@@ -1,9 +1,12 @@
 import logging
 import asyncio
 import json
+import os
+import configargparse
 
 import redis.asyncio as redis
 
+from config import settings
 from utils import write_to_json
 
 
@@ -13,6 +16,37 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     encoding="utf-8",
 )
+
+
+parser = configargparse.ArgumentParser(
+    auto_env_var_prefix="",
+    description="token, nickname for login or registration.",
+    default_config_files=["myconfig.ini"],
+    add_help=False,
+)
+
+
+parser.add_argument(
+    "--help",
+    "-help",
+    action="help",
+    help="--host - server,\n"
+    "--port - port on server,\n"
+    "--nickname - nickname registered previously,\n"
+    "--token - token registered previously.",
+)
+
+
+parser.add_argument(
+    "--host", "-h", dest="host", default=settings.HOST, type=str, help="input server address",
+)
+parser.add_argument(
+    "--port", "-p", dest="port", default=settings.PORT, type=str, help="input servers port",
+)
+parser.add_argument(
+    "--nickname", "-n", dest="nickname", default=settings.NICKNAME, type=str, help="input nickname"
+)
+args = parser.parse_args()
 
 
 async def get_hash(response: str):
@@ -27,19 +61,23 @@ async def get_hash(response: str):
 
 
 async def authorise(nickname, client, response, writer):
-    value = await client.get(nickname)
-    if value:
-        logging.info(f"to server: {response.decode()}")
-        writer.write(value + b"\n")
-        await writer.drain()
-    else:
-        logging.info(f"to server: {response.decode()}")
-        writer.write(" ".encode("utf-8") + b"\n")
-        await writer.drain()
+    value = None
+    if nickname:
+        value = await client.get(nickname)
+        if value:
+            logging.info(
+                f"to server: {response.decode()}"
+            )
+            writer.write(value + b"\n")
+            await writer.drain()
+        else:
+            logging.info(f"to server: {response.decode()}")
+            writer.write(" ".encode("utf-8") + b"\n")
+            await writer.drain()
     return value
 
 
-async def register(nickname, client, response, writer, reader, value):
+async def register(client, response, writer, reader, value, nickname):
     if response.decode() == "Enter preferred nickname below:\n":
         logging.info(f"ser info: {response.decode()}")
         writer.write(nickname.encode("utf-8") + b"\n" + b"\n")
@@ -58,7 +96,7 @@ async def register(nickname, client, response, writer, reader, value):
                 nickname, account_hash = await get_hash(response.decode())
                 value = account_hash
                 print(f"Ur nickname: {nickname}")
-                await write_to_json("nicknames.json", nickname)
+                await write_to_json("nicknames.json", nickname, value)
                 logging.info(f"nickname: {response.decode()}")
                 await client.set(nickname, account_hash)
                 response = await reader.readline()
@@ -85,7 +123,7 @@ async def submit_message(response, writer):
 async def send_messages(reader, writer):
     value = None
     client = redis.Redis()
-    nickname = input("Enter preferred nickname: ")
+    nickname = args.nickname
     while True:
         try:
             response = await reader.readline()
@@ -99,7 +137,7 @@ async def send_messages(reader, writer):
         ):
             value = await authorise(nickname, client, response, writer)
         else:
-            value = await register(nickname, client, response, writer, reader, value)
+            value = await register(client, response, writer, reader, value, nickname)
             if value:
                 break
 
@@ -110,10 +148,11 @@ async def send_messages(reader, writer):
 
 
 async def main():
-    host = "minechat.dvmn.org"
-    port = 5050
-    reader, writer = await asyncio.open_connection(host=host, port=port)
-    logging.info(f"host: {host}, port: {port}")
+    # host = "minechat.dvmn.org"
+    # port = 5050
+    reader, writer = await asyncio.open_connection(host=args.host, port=args.port)
+    # reader, writer = await asyncio.open_connection(host=host, port=port)
+    logging.info(f"host: {args.host}, port: {args.port}")
     send_task = asyncio.create_task(send_messages(reader, writer))
     await asyncio.gather(send_task)
 

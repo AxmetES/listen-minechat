@@ -27,6 +27,7 @@ parser.add_argument(
     "--help", "-help", action="help", help="Show this help message and exit"
 )
 
+
 file_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), settings.FILENAME)
 parser.add_argument("--host", "-h", dest="host", default=settings.HOST,  type=str, help="server address")
 parser.add_argument("--port", "-p", dest="port", default=settings.PORT, type=str, help="servers port")
