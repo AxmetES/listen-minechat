@@ -106,10 +106,7 @@ async def send_messages(reader, writer):
 
 
 async def write_to_tcp_client():
-    host = 'minechat.dvmn.org'
-    port = '5050'
-    # async with open_connection_contextmanager(args.host, args.port) as connection:
-    async with open_connection_contextmanager(host, port) as connection:
+    async with open_connection_contextmanager(args.host, args.port) as connection:
         reader, writer = connection
     logging.info(f"host: {args.host}, port: {args.port}")
     send_task = asyncio.create_task(send_messages(reader, writer))
