@@ -80,8 +80,7 @@ async def submit_message(response, writer):
 async def send_messages(reader, writer):
     value = None
     client = redis.Redis()
-    # nickname = args.nickname
-    nickname = 'Hopeful Vibrant'
+    nickname = args.nickname
     while True:
         try:
             response = await reader.readline()
