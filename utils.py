@@ -1,8 +1,10 @@
 import datetime
 import json
 import logging
+from contextlib import asynccontextmanager
 
 import aiofiles
+import asyncio
 
 
 async def append_to_file(filename, data):
@@ -35,3 +37,13 @@ async def write_to_json(filename, new_nickname, account_hash):
             await file.write(json.dumps(existing_data, indent=2))
     except OSError as e:
         logging.error(f"Error writing to file: {e}")
+
+
+@asynccontextmanager
+async def open_connection_contextmanager(host, port):
+    reader, writer = await asyncio.open_connection(host, port)
+    try:
+        yield reader, writer
+    except OSError as e:
+        logging.error(f"Error connecting to the server: {e}")
+        return

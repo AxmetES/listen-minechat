@@ -1,52 +1,12 @@
 import logging
 import asyncio
 import json
-import os
 import configargparse
 
 import redis.asyncio as redis
 
 from config import settings
-from utils import write_to_json
-
-
-logging.basicConfig(
-    filename="write.log",
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    encoding="utf-8",
-)
-
-
-parser = configargparse.ArgumentParser(
-    auto_env_var_prefix="",
-    description="token, nickname for login or registration.",
-    default_config_files=["myconfig.ini"],
-    add_help=False,
-)
-
-
-parser.add_argument(
-    "--help",
-    "-help",
-    action="help",
-    help="--host - server,\n"
-    "--port - port on server,\n"
-    "--nickname - nickname registered previously,\n"
-    "--token - token registered previously.",
-)
-
-
-parser.add_argument(
-    "--host", "-h", dest="host", default=settings.HOST, type=str, help="input server address",
-)
-parser.add_argument(
-    "--port", "-p", dest="port", default=settings.PORT, type=str, help="input servers port",
-)
-parser.add_argument(
-    "--nickname", "-n", dest="nickname", default=settings.NICKNAME, type=str, help="input nickname"
-)
-args = parser.parse_args()
+from utils import write_to_json, open_connection_contextmanager
 
 
 async def get_hash(response: str):
@@ -74,6 +34,10 @@ async def authorise(nickname, client, response, writer):
             logging.info(f"to server: {response.decode()}")
             writer.write(" ".encode("utf-8") + b"\n")
             await writer.drain()
+            print("Nickname не найдет, будет создан новый пользователь.")
+            logging.exception(
+                "Nickname не найдет, будет создан новый пользователь."
+            )
     return value
 
 
@@ -83,16 +47,9 @@ async def register(client, response, writer, reader, value, nickname):
         writer.write(nickname.encode("utf-8") + b"\n" + b"\n")
         await writer.drain()
     else:
-        try:
-            assert json.loads(response.decode()) is None
-            print("Неизвестный токен. Проверьте его или зарегистрируйте заново.")
-            logging.exception(
-                "Неизвестный токен. Проверьте его или зарегистрируйте заново."
-            )
-            return None
-        except AssertionError as error:
-            logging.info("account_hash saved.")
-            if not value:
+        logging.info("account_hash saved.")
+        if not value:
+            try:
                 nickname, account_hash = await get_hash(response.decode())
                 value = account_hash
                 print(f"Ur nickname: {nickname}")
@@ -101,11 +58,11 @@ async def register(client, response, writer, reader, value, nickname):
                 await client.set(nickname, account_hash)
                 response = await reader.readline()
                 print(f"from server: {response.decode()}")
-            return value
-        except redis.RedisError as redis_error:
-            logging.error(f"Redis error: {redis_error}")
-        except Exception as error:
-            logging.exception(error)
+            except redis.RedisError as redis_error:
+                logging.error(f"Redis error: {redis_error}")
+            except Exception as error:
+                logging.exception(error)
+        return value
 
 
 async def submit_message(response, writer):
@@ -123,7 +80,8 @@ async def submit_message(response, writer):
 async def send_messages(reader, writer):
     value = None
     client = redis.Redis()
-    nickname = args.nickname
+    # nickname = args.nickname
+    nickname = 'Hopeful Vibrant'
     while True:
         try:
             response = await reader.readline()
@@ -147,14 +105,49 @@ async def send_messages(reader, writer):
     await submit_message(response, writer)
 
 
-async def main():
-    # host = "minechat.dvmn.org"
-    # port = 5050
-    reader, writer = await asyncio.open_connection(host=args.host, port=args.port)
-    # reader, writer = await asyncio.open_connection(host=host, port=port)
+async def write_to_tcp_client():
+    host = 'minechat.dvmn.org'
+    port = '5050'
+    # async with open_connection_contextmanager(args.host, args.port) as connection:
+    async with open_connection_contextmanager(host, port) as connection:
+        reader, writer = connection
     logging.info(f"host: {args.host}, port: {args.port}")
     send_task = asyncio.create_task(send_messages(reader, writer))
     await asyncio.gather(send_task)
 
+if __name__ == '__main__':
+    logging.basicConfig(
+        filename="write.log",
+        level=logging.DEBUG,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        encoding="utf-8",
+    )
 
-asyncio.run(main())
+    parser = configargparse.ArgumentParser(
+        auto_env_var_prefix="",
+        description="token, nickname for login or registration.",
+        default_config_files=["myconfig.ini"],
+        add_help=False,
+    )
+
+    parser.add_argument(
+        "--help",
+        "-help",
+        action="help",
+        help="--host - server,\n"
+             "--port - port on server,\n"
+             "--nickname - nickname registered previously,\n"
+             "--token - token registered previously.",
+    )
+
+    parser.add_argument(
+        "--host", "-h", dest="host", default=settings.HOST, type=str, help="input server address",
+    )
+    parser.add_argument(
+        "--port", "-p", dest="port", default=settings.PORT, type=str, help="input servers port",
+    )
+    parser.add_argument(
+        "--nickname", "-n", dest="nickname", default=settings.NICKNAME, type=str, help="input nickname"
+    )
+    args = parser.parse_args()
+    asyncio.run(write_to_tcp_client())
