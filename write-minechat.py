@@ -107,9 +107,9 @@ async def send_messages(reader, writer):
 async def write_to_tcp_client():
     async with open_connection_contextmanager(args.host, args.port) as connection:
         reader, writer = connection
-    logging.info(f"host: {args.host}, port: {args.port}")
-    send_task = asyncio.create_task(send_messages(reader, writer))
-    await asyncio.gather(send_task)
+        logging.info(f"host: {args.host}, port: {args.port}")
+        send_task = asyncio.create_task(send_messages(reader, writer))
+        await asyncio.gather(send_task)
 
 if __name__ == '__main__':
     logging.basicConfig(

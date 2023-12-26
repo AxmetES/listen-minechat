@@ -11,14 +11,14 @@ async def listening_tcp_client():
     logging.info(f"Start listening, host: {args.host}, port: {args.port}")
     async with open_connection_contextmanager(args.host, args.port) as connection:
         reader, writer = connection
-    data = await reader.read(500)
-    while data:
         data = await reader.read(500)
-        print(data.decode())
-        await append_to_file(args.filename, data.decode().strip())
+        while data:
+            data = await reader.read(500)
+            print(data.decode())
+            await append_to_file(args.filename, data.decode().strip())
 
-    logging.info(f"Received: {data.decode()!r}")
-    print(f"Received: {data.decode()!r}")
+        logging.info(f"Received: {data.decode()!r}")
+        print(f"Received: {data.decode()!r}")
 
 
 if __name__ == '__main__':
